@@ -24,7 +24,15 @@ rm *	Wildcard yang mewakili banyak karakter.
 rm ?	Wildcard yang mewakili satu karakter.
 rmdir -p	Menghapus subdirektori kosong dan direktori induknya.
 rmdir -v	Menampilkan informasi bahwa direktori tertentu telah dihapus.
-
-
+pwd Lihat lokasi folder saat inilsLihat isi folder
+cd nama-folder Masuk ke folder
+cd ../Kembali ke folder sebelumnya
+mkdir namaBuat folder baru
+touch nama-file Buat file baru
+rm nama-file Hapus file
+cp file tujuan Salin file
+mv file tujuanPindah/rename file
+cat nama-file Lihat isi file
+clear Bersihkan layar terminal
 
 

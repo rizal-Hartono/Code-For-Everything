@@ -1,0 +1,24 @@
+Kumpulan Insight
+
+1. Auto mount hdd
+Menggunakan /etc/fstab (Direkomendasikan)
+
+Langkah 1 — Cari UUID Harddisk
+bashsudo blkid
+Output contoh:
+/dev/sda1: UUID="1234-5678" TYPE="ntfs"
+Catat UUID harddiskmu.
+
+Langkah 2 — Buka File fstab
+sudo nano /etc/fstab
+
+Langkah 3 — Tambahkan Baris Ini
+UUID=1234-5678  /home/insun/media/insundrive  ntfs-3g  defaults,auto,users,rw,nofail  0  0
+Penjelasan:
+BagianArtiUUID=1234-5678Identitas harddisk kamu/home/insun/media/insundriveFolder mount pointntfs-3gFormat harddisk (ntfs)defaults,autoMount otomatis saat bootnofailServer tetap jalan meski harddisk tidak terbaca
+
+Langkah 4 — Test Tanpa Reboot
+sudo mount -a
+
+Langkah 5 — Cek Hasilnya
+lsblk

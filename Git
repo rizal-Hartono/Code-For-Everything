@@ -128,3 +128,41 @@ File baru dibuat      →  U  (Untracked)
    git add .          →  A  (Added/Staged)
         ↓
   git commit          →  (simbol hilang lagi)
+
+  /////
+
+  Insun@DESKTOP-MROAE30 MINGW64 //192.168.18.24/insundrive/Tech/Resource/All About Git/Code-For-Everything
+$ git status
+fatal: detected dubious ownership in repository at '//192.168.18.24/insun
+drive/Tech/Resource/All About Git/Code-For-Everything'
+'//192.168.18.24/insundrive/Tech/Resource/All About Git/Code-For-Everythi
+ng' is owned by:
+        (inconvertible) (S-1-22-1-0)
+but the current user is:
+        DESKTOP-MROAE30/Insun (S-1-5-21-673664392-3981373901-3132303382-1
+001)
+To add an exception for this directory, call:
+
+        git config --global --add safe.directory '%(prefix)///192.168.18.
+24/insundrive/Tech/Resource/All About Git/Code-For-Everything'
+
+Ketika ada error diatas dapat diselesaikan dengan cara berikut
+
+git config --global --add safe.directory '%(prefix)///192.168.18.24/insundrive/Tech/Resource/All About Git/Code-For-Everything'
+
+atau
+
+git config --global --add safe.directory '*'
+
+Penyebab
+- Akses via Network ShareFolder diakses lewat IP 192.168.18.24 bukan path lokal
+- Perbedaan OwnerPemilik folder berbeda dengan user yang menjalankan GitFitur Keamanan Git
+- Git sengaja memblokir ini untuk mencegah potensi bahaya
+
+Error ini terjadi karena Git mendeteksi perbedaan kepemilikan antara user yang menjalankan Git dengan pemilik folder. Ini umum terjadi ketika mengakses folder melalui jaringan/share folder.
+
+/dev/mmcblk0p1: LABEL="opi_root" UUID="2a44ed57-6df2-44b4-9d51-99000c47e55b" BLOCK_SIZE="4096" TYPE="ext4" PARTUUID="a3d43d33-01"
+/dev/zram0: UUID="853e52fa-4978-4ae0-9bb2-afe5e3692561" TYPE="swap"
+/dev/zram1: LABEL="log2ram" UUID="a0094e58-228f-4d86-880f-9b992375a219" BLOCK_SIZE="4096" TYPE="ext4"
+/dev/sda2: LABEL="New Volume" BLOCK_SIZE="512" UUID="E67C07917C075C25" TYPE="ntfs" PARTLABEL="Basic data partition" PARTUUID="f82f13b0-db8b-426c-b553-7fbf86379bb9"
+/dev/sda1: PARTLABEL="Microsoft reserved partition" PARTUUID="73e62642-bbe9-428c-9f5d-606e1adc92e0"
