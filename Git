@@ -43,3 +43,88 @@ Note
 if your file Modified (M) you can directly commit
 if your file Untracked (U) you must add the file before commit
 
+-----------------------------------------------------
+
+Setting untuk git
+
+# Config awal
+git config --global user.name "Nama Kamu" 
+git config --global user.email "email@kamu.com" 
+
+# Untuk menclone sebuah repo
+git clone https://github.com/username/nama-repo.git => 
+
+# Lihat perubahan yang ada
+git status
+
+# Tambahkan file ke staging
+git add nama-file.txt
+# atau tambahkan semua file
+git add .
+
+# Simpan perubahan dengan pesan
+git commit -m "Pesan commit kamu"
+
+# Kirim ke GitHub
+git push
+
+# Jika ada perubahan terbaru di GitHub, tarik ke komputer:
+git pull
+
+# Lihat branch yang ada
+git branch
+
+# Buat branch baru
+git branch nama-branch
+
+# Pindah ke branch itu
+git checkout nama-branch
+
+# Buat sekaligus pindah (lebih praktis)
+git checkout -b nama-branch
+
+# Pastikan kamu di branch tujuan (misalnya main)
+git checkout main
+
+# Gabungkan branch lain ke sini
+git merge nama-branch
+
+<<<<<<< HEAD
+Ini perubahan dari kamu
+=======
+Ini perubahan dari orang lain
+>>>>>>> branch-lain
+
+Alur Kerja
+
+1. Buat repo di GitHub
+        ↓
+2. Clone ke komputer (git clone)
+        ↓
+3. Buat branch baru (git checkout -b)
+        ↓
+4. Edit file / tambah kode
+        ↓
+5. git add .
+        ↓
+6. git commit -m "pesan"
+        ↓
+7. git push
+        ↓
+8. Buat Pull Request di GitHub
+        ↓
+9. Review → Merge ke main
+
+Alur Perubahan Simbolnya
+
+File baru dibuat      →  U  (Untracked)
+        ↓
+   git add .          →  A  (Added/Staged)
+        ↓
+  git commit          →  (simbol hilang, sudah tersimpan)
+        ↓
+  Edit file lagi      →  M  (Modified)
+        ↓
+   git add .          →  A  (Added/Staged)
+        ↓
+  git commit          →  (simbol hilang lagi)
