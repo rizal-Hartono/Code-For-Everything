@@ -22,6 +22,7 @@ sudo mount -a
 
 Langkah 5 — Cek Hasilnya
 lsblk
+<<<<<<< HEAD
 
 2. Install PhpMyadmin
 Baik, karena pakai Nginx prosesnya sedikit berbeda! Berikut langkah-langkahnya:
@@ -103,3 +104,5 @@ EXIT;
 Langkah 9 — Akses phpMyAdmin
 Buka browser:
 http://192.168.18.24/phpmyadmin
+=======
+>>>>>>> 69c69c656b08f6b6057f23b2e4a3a316fbe306c8
