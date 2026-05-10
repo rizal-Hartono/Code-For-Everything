@@ -51,3 +51,35 @@ lsblk
 Langkah 4 — Cek Apakah Berhasil
 ls /home/insun/media/insundrive
 Jika isi harddisk muncul berarti berhasil ✅
+
+2. 
+
+Itu error karena ekstensi intl (Internationalization) PHP belum terinstall. Ekstensi ini diperlukan untuk NumberFormatter. Berikut cara mengatasinya:
+
+Langkah 1 — Install Ekstensi intl
+bashsudo apt install php8.1-intl -y
+
+Langkah 2 — Restart PHP-FPM
+bashsudo systemctl restart php8.1-fpm
+
+Langkah 3 — Verifikasi Ekstensi Terinstall
+bashphp -m | grep intl
+Output yang benar:
+intl
+
+Langkah 4 — Refresh Browser
+Buka kembali website kamu, error 500 seharusnya sudah hilang ✅
+
+Jika Masih Error, Coba Alternatif Kode
+Jika tidak ingin install ekstensi, bisa ganti kode tersebut dengan cara manual:
+php// Ganti ini
+$formatter = new NumberFormatter('en_US', NumberFormatter::PERCENT);
+
+// Dengan ini (tanpa ekstensi intl)
+$percentage = number_format($nilai * 100, 2) . '%';
+
+Cek Ekstensi PHP yang Terinstall
+Untuk referensi kedepannya, cek semua ekstensi yang aktif:
+bashphp -m
+
+Coba install ekstensi intl dulu ya, itu cara paling mudah! 😊
