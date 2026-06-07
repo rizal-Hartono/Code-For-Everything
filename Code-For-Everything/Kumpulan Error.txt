@@ -152,3 +152,5 @@ sudo chown prometheus:prometheus /usr/local/bin/promtool
 
 sudo systemctl restart prometheus
 sudo systemctl status prometheus
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
