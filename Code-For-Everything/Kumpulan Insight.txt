@@ -1,0 +1,1012 @@
+Kumpulan Insight
+
+1. Auto mount hdd
+Menggunakan /etc/fstab (Direkomendasikan)
+
+Langkah 1 — Cari UUID Harddisk
+bashsudo blkid
+Output contoh:
+/dev/sda1: UUID="1234-5678" TYPE="ntfs"
+Catat UUID harddiskmu.
+
+Langkah 2 — Buka File fstab
+sudo nano /etc/fstab
+
+Langkah 3 — Tambahkan Baris Ini
+UUID=1234-5678  /home/insun/media/insundrive  ntfs-3g  defaults,auto,users,rw,nofail  0  0
+Penjelasan:
+BagianArtiUUID=1234-5678Identitas harddisk kamu/home/insun/media/insundriveFolder mount pointntfs-3gFormat harddisk (ntfs)defaults,autoMount otomatis saat bootnofailServer tetap jalan meski harddisk tidak terbaca
+
+Langkah 4 — Test Tanpa Reboot
+sudo mount -a
+
+Langkah 5 — Cek Hasilnya
+lsblk
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ 
+2. Install PhpMyadmin
+Baik, karena pakai Nginx prosesnya sedikit berbeda! Berikut langkah-langkahnya:
+
+Langkah 1 — Update Sistem
+bashsudo apt update && sudo apt upgrade -y
+
+Langkah 2 — Install PHP & PHP-FPM (Jika Belum Ada)
+Nginx menggunakan PHP-FPM bukan mod_php seperti Apache:
+bashsudo apt install php php-fpm php-mysql php-mbstring php-zip php-gd php-json php-curl -y
+
+Langkah 3 — Install phpMyAdmin
+bashsudo apt install phpmyadmin -y
+Saat instalasi muncul pertanyaan:
+1. Pilih web server → JANGAN pilih apapun (kosongkan, langsung Enter)
+   karena kita pakai Nginx
+2. Configure database with dbconfig-common? → pilih "Yes"
+3. Masukkan password MySQL kamu
+
+Langkah 4 — Buat Symbolic Link ke Nginx
+bashsudo ln -s /usr/share/phpmyadmin /var/www/html/phpmyadmin
+
+Langkah 5 — Konfigurasi Nginx
+bashsudo nano /etc/nginx/sites-available/phpmyadmin
+Isi dengan konfigurasi berikut:
+nginxserver {
+    listen 80;
+    server_name 192.168.18.24;  # ganti dengan IP OrangePi kamu
+
+    root /var/www/html;
+    index index.php index.html;
+
+    location /phpmyadmin {
+        root /var/www/html;
+        index index.php;
+
+        location ~ \.php$ {
+            include snippets/fastcgi-php.conf;
+            fastcgi_pass unix:/var/run/php/php-fpm.sock;
+        }
+    }
+}
+
+Langkah 6 — Aktifkan Konfigurasi Nginx
+bash# Aktifkan site
+sudo ln -s /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/
+
+# Test konfigurasi nginx
+sudo nginx -t
+
+# Restart Nginx
+sudo systemctl restart nginx
+
+Langkah 7 — Cek Versi PHP-FPM
+Pastikan versi PHP-FPM sesuai:
+bash# Cek versi PHP
+php -v
+
+# Sesuaikan path fpm di konfigurasi nginx
+# Contoh jika PHP 8.1
+fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+
+Langkah 8 — Buat User MySQL
+bash# Masuk MySQL
+sudo mysql
+
+# Buat user
+CREATE USER 'insun'@'localhost' IDENTIFIED BY 'password_kamu';
+
+# Beri akses
+GRANT ALL PRIVILEGES ON *.* TO 'insun'@'localhost';
+
+# Simpan
+FLUSH PRIVILEGES;
+
+# Keluar
+EXIT;
+
+Langkah 9 — Akses phpMyAdmin
+Buka browser:
+http://192.168.18.24/phpmyadmin
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+3. Error untuk php
+Ketemu masalahnya! Ada 2 masalah utama:
+
+Error koneksi MySQL - user root tidak bisa akses database
+Error konfigurasi Nginx - ada kurung kurawal } yang tidak lengkap
+
+
+Perbaiki Masalah 1 — Konfigurasi Database di Website
+Buka file function.php dan cek koneksi database:
+bashsudo nano /var/www/html/service/function.php
+Cari baris koneksi MySQL, biasanya seperti ini:
+php$conn = new mysqli('localhost', 'root', 'password', 'nama_database');
+Ubah username dan password sesuai user MySQL yang sudah dibuat sebelumnya:
+php$conn = new mysqli('localhost', 'insun', 'password_kamu', 'nama_database');
+
+Perbaiki Masalah 2 — Konfigurasi Nginx
+bashsudo nano /etc/nginx/sites-available/default
+Hapus semua isinya dan ganti dengan konfigurasi bersih ini:
+nginxserver {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    root /var/www/html;
+    index index.php index.html;
+
+    server_name localhost;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+
+Test & Restart
+bash# Test konfigurasi
+sudo nginx -t
+
+# Jika sukses, restart
+sudo systemctl restart nginx
+sudo systemctl restart php8.1-fpm
+
+Jika Ingin Tetap Pakai User root MySQL
+Bisa juga aktifkan akses root MySQL:
+bashsudo mysql
+
+# Ubah autentikasi root
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password_baru';
+FLUSH PRIVILEGES;
+EXIT;
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+4. Install Tailscale
+
+Apa itu Tailscale?
+Tailscale adalah VPN pribadi yang menghubungkan semua perangkat kamu dalam satu jaringan privat, seolah-olah semua perangkat berada di jaringan yang sama meskipun berbeda lokasi.
+HP kamu (di luar)  ←→  Tailscale  ←→  OrangePi (di rumah)
+
+Kelebihan Tailscale
+KelebihanKeteranganGratisHingga 3 pengguna & 100 perangkatTanpa domainTidak perlu beli domainAmanEnkripsi end-to-endMudah setupTidak perlu konfigurasi routerIP PermanenIP Tailscale tidak berubah-ubah
+
+Langkah 1 — Daftar Tailscale
+
+Buka tailscale.com
+Daftar akun gratis pakai Google/GitHub
+
+
+Langkah 2 — Install di OrangePi
+bash# Install Tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
+
+# Jalankan & login
+sudo tailscale up
+Akan muncul link seperti ini:
+To authenticate, visit:
+https://login.tailscale.com/a/xxxxxxxxxx
+Buka link tersebut di browser dan login dengan akun Tailscale kamu.
+
+Langkah 3 — Cek IP Tailscale OrangePi
+bashtailscale ip
+Output contoh:
+100.64.0.1
+Catat IP ini, ini adalah IP permanen OrangePi kamu di jaringan Tailscale.
+
+Langkah 4 — Install Tailscale di Perangkat Lain
+Install di HP atau laptop kamu:
+PerangkatLink DownloadAndroidPlay Store → "Tailscale"iPhoneApp Store → "Tailscale"Windowstailscale.com/downloadLinuxcurl -fsSL https://tailscale.com/install.sh | sh
+Login dengan akun yang sama di semua perangkat.
+
+Langkah 5 — Akses OrangePi dari Luar
+Setelah semua perangkat terhubung, akses OrangePi dari mana saja:
+bash# Akses website
+http://100.64.0.1
+
+# Akses phpMyAdmin
+http://100.64.0.1/phpmyadmin
+
+# Akses via SSH
+ssh insun@100.64.0.1
+
+# Akses Samba/file backup
+\\100.64.0.1\insundrive
+
+Langkah 6 — Auto Start Tailscale
+Supaya Tailscale otomatis jalan saat OrangePi dinyalakan:
+bashsudo systemctl enable tailscaled
+sudo systemctl start tailscaled
+Cek statusnya:
+bashsudo systemctl status tailscaled
+
+Langkah 7 — Cek Semua Perangkat Terhubung
+bashtailscale status
+Output contoh:
+100.64.0.1  orangepi     insun@  linux   -
+100.64.0.2  laptop-saya  insun@  windows -
+100.64.0.3  hp-saya      insun@  android -
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+5. App Linktree
+
+Buat folder seperti dibawah
+
+linktree/
+├── index.php          ← halaman publik (tampilan Linktree)
+├── db/
+│   └── database.php   ← koneksi SQLite
+└── admin/
+    └── index.php      ← halaman CRUD kelola link
+
+# Upload dan extract
+unzip linktree.zip -d /var/www/html/
+
+# Beri izin tulis untuk SQLite
+chmod 775 /var/www/html/linktree/db/
+
+Error 500 biasanya karena PHP tidak bisa menulis file SQLite. Coba cek dengan langkah berikut:
+
+1. Cek error log Nginx:
+bashsudo tail -f /var/log/nginx/error.log
+
+2. Cek permission folder db:
+bashls -la /var/www/html/linktree/db/
+
+3. Perbaiki permission:
+bash# Beri akses tulis ke folder db
+sudo chown -R www-data:www-data /var/www/html/linktree/
+sudo chmod 775 /var/www/html/linktree/db/
+
+4. Pastikan ekstensi SQLite aktif di PHP:
+bashphp -m | grep sqlite
+
+Harusnya muncul:
+pdo_sqlite
+sqlite3
+
+Kalau tidak muncul, install dulu:
+bashsudo apt install php-sqlite3
+sudo systemctl restart php8.1-fpm
+sudo systemctl restart nginx
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+6. APP Promotheus dan Grafana
+
+Aplikasi ini digunakan untuk monitoring kondisi server dan ditampilkan dalam sebuah dashboard
+
+# Buat user khusus prometheus
+sudo useradd --no-create-home --shell /bin/false prometheus
+
+# Buat folder yang dibutuhkan
+sudo mkdir /etc/prometheus
+sudo mkdir /var/lib/prometheus
+
+# Download Prometheus (versi terbaru)
+cd /tmp
+wget https://github.com/prometheus/prometheus/releases/download/v2.51.0/prometheus-2.51.0.linux-amd64.tar.gz
+
+# Extract
+tar xvf prometheus-2.51.0.linux-amd64.tar.gz
+cd prometheus-2.51.0.linux-amd64
+
+# Copy binary
+sudo cp prometheus /usr/local/bin/
+sudo cp promtool   /usr/local/bin/
+
+# Copy config
+sudo cp -r consoles/          /etc/prometheus/
+sudo cp -r console_libraries/ /etc/prometheus/
+sudo cp prometheus.yml        /etc/prometheus/
+
+# Set ownership
+sudo chown -R prometheus:prometheus /etc/prometheus/
+sudo chown -R prometheus:prometheus /var/lib/prometheus/
+sudo chown prometheus:prometheus /usr/local/bin/prometheus
+sudo chown prometheus:prometheus /usr/local/bin/promtool
+
+Buat file konfigurasi Prometheus:
+bashsudo nano /etc/prometheus/prometheus.yml
+Isi dengan:
+yamlglobal:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+
+Buat systemd service untuk Prometheus:
+bashsudo nano /etc/systemd/system/prometheus.service
+Isi dengan:
+ini[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/bin/prometheus \
+  --config.file /etc/prometheus/prometheus.yml \
+  --storage.tsdb.path /var/lib/prometheus/ \
+  --storage.tsdb.retention.time=30d \
+  --web.listen-address=0.0.0.0:9090
+
+[Install]
+WantedBy=multi-user.target
+bash# Aktifkan dan jalankan
+sudo systemctl daemon-reload
+sudo systemctl enable prometheus
+sudo systemctl start prometheus
+
+# Cek status
+sudo systemctl status prometheus
+
+LANGKAH 2 - Install Node Exporter
+bashcd /tmp
+wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz
+
+tar xvf node_exporter-1.7.0.linux-amd64.tar.gz
+cd node_exporter-1.7.0.linux-amd64
+
+sudo cp node_exporter /usr/local/bin/
+sudo useradd --no-create-home --shell /bin/false node_exporter
+sudo chown node_exporter:node_exporter /usr/local/bin/node_exporter
+Buat systemd service Node Exporter:
+bashsudo nano /etc/systemd/system/node_exporter.service
+Isi dengan:
+ini[Unit]
+Description=Node Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
+bashsudo systemctl daemon-reload
+sudo systemctl enable node_exporter
+sudo systemctl start node_exporter
+
+# Cek status
+sudo systemctl status node_exporter
+
+LANGKAH 3 - Install Grafana
+bash# Tambah repository Grafana
+sudo apt install -y apt-transport-https software-properties-common wget
+wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+
+# Install
+sudo apt update
+sudo apt install -y grafana
+
+# Aktifkan dan jalankan
+sudo systemctl daemon-reload
+sudo systemctl enable grafana-server
+sudo systemctl start grafana-server
+
+# Cek status
+sudo systemctl status grafana-server
+
+LANGKAH 4 - Konfigurasi Nginx untuk Grafana
+bashsudo nano /etc/nginx/sites-available/grafana
+Isi dengan:
+nginxserver {
+    listen 80;
+    server_name namaserver.tail12345.ts.net;
+
+    location /grafana/ {
+        proxy_pass http://localhost:3000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+bash# Aktifkan
+sudo ln -s /etc/nginx/sites-available/grafana /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
+LANGKAH 5 - Setup awal Grafana
+Akses Grafana di browser via Tailscale:
+http://namaserver.tail12345.ts.net/grafana/
+Login pertama kali:
+Username : admin
+Password : admin
+Grafana akan minta ganti password, ganti dengan password yang kuat.
+
+LANGKAH 6 - Tambah Data Source Prometheus di Grafana
+1. Klik menu kiri → Connections → Data Sources
+2. Klik "Add data source"
+3. Pilih "Prometheus"
+4. URL → http://localhost:9090
+5. Klik "Save & Test"
+6. Harusnya muncul ✅ "Successfully queried the Prometheus API"
+
+LANGKAH 7 - Import Dashboard Server Monitor
+Grafana punya ribuan dashboard siap pakai! Untuk monitor server Ubuntu:
+1. Klik menu kiri → Dashboards → Import
+2. Masukkan ID → 1860
+   (ini dashboard Node Exporter Full yang sangat populer)
+3. Klik Load
+4. Pilih data source → Prometheus
+5. Klik Import
+Langsung muncul dashboard lengkap dengan grafik CPU, RAM, Disk, Network!
+
+LANGKAH 8 - Tambah Data Source MySQL (akalsehat)
+1. Connections → Data Sources → Add data source
+2. Pilih "MySQL"
+3. Isi:
+   Host     : localhost:3306
+   Database : nama_database_akalsehat
+   User     : username_mysql
+   Password : password_mysql
+4. Klik "Save & Test"
+
+Cek semua service berjalan:
+bashsudo systemctl status prometheus
+sudo systemctl status node_exporter
+sudo systemctl status grafana-server
+
+Langkah 9 - Import Dashboard Server Monitor
+1. Buka Grafana di browser
+2. Klik Dashboards → Import
+3. Masukkan ID → 1860
+4. Pilih data source → Prometheus
+5. Klik Import
+Langsung dapat dashboard cantik CPU, RAM, Disk, Network!
+
+Langkah 10 - Koneksikan MySQL akalsehat
+1. Connections → Data Sources → Add data source
+2. Pilih MySQL
+3. Isi kredensial database akalsehat
+4. Save & Test
+
+Langkah 11 - Buat dashboard data akalsehat
+Setelah MySQL terhubung, kita bisa buat grafik:
+
+Tren data cek antara
+Grafik suhu & RH
+Jumlah kalibrasi per bulan
+dll.
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+7. Serverless dengan vanila js dan spreadsheet
+
+Tahap 1 — Buat Akun Vercel
+
+Buka vercel.com
+Klik Sign Up
+Pilih Continue with GitHub (disarankan, karena nanti deploy lewat GitHub)
+Kalau belum punya akun GitHub, buat dulu di github.com
+Setelah login, Vercel akan minta izin akses ke GitHub → Authorize
+
+
+Tahap 2 — Buat Akun Google Cloud Console
+
+Buka console.cloud.google.com
+Login pakai akun Google (akun yang sama dengan Google Sheet kamu)
+Setujui Terms of Service
+Klik Select a project → New Project
+Beri nama project, misal: sertifikat-app → klik Create
+
+
+Tahap 3 — Aktifkan Google Sheets API
+Setelah project dibuat:
+
+Di menu kiri klik APIs & Services → Library
+Search: Google Sheets API
+Klik → Enable
+
+
+Tahap 4 — Buat API Key
+
+Klik APIs & Services → Credentials
+Klik + Create Credentials → API Key
+API key akan muncul → copy dan simpan di tempat aman
+Klik Edit API Key → di bagian API restrictions pilih Google Sheets API saja (supaya lebih aman)
+
+Tahap 5 — Buat Struktur Project
+Buat folder baru di komputer kamu, misal: sertifikat-app
+Struktur foldernya seperti ini:
+sertifikat-app/
+├── api/
+│   └── sertifikat.js
+├── index.html
+└── style.css
+
+Tahap 6 — Buat file api/sertifikat.js
+Ini adalah serverless function-nya. Buat folder api dulu, lalu di dalamnya buat file sertifikat.js:
+javascriptexport default async function handler(req, res) {
+  // Ambil parameter nama dari query string
+  // Contoh: /api/sertifikat?nama=Budi
+  const { nama } = req.query;
+
+  if (!nama) {
+    return res.status(400).json({ error: 'Parameter nama wajib diisi' });
+  }
+
+  const SHEET_ID = process.env.SHEET_ID;
+  const API_KEY = process.env.GOOGLE_API_KEY;
+  const SHEET_NAME = 'Data'; // ganti sesuai nama sheet kamu
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    const rows = data.values;
+
+    // Baris pertama = header
+    const headers = rows[0];
+    
+    // Cari baris yang namanya cocok (kolom A, index 0)
+    // Ganti angka 0 sesuai kolom nama di sheet kamu
+    const peserta = rows.slice(1).find(row => 
+      row[0].toLowerCase() === nama.toLowerCase()
+    );
+
+    if (!peserta) {
+      return res.status(404).json({ error: 'Nama tidak ditemukan' });
+    }
+
+    // Ubah jadi object { NamaKolom: nilai }
+    const result = {};
+    headers.forEach((header, i) => {
+      result[header] = peserta[i] || '';
+    });
+
+    return res.status(200).json(result);
+
+  } catch (err) {
+    return res.status(500).json({ error: 'Gagal mengambil data' });
+  }
+}
+
+Tahap 7 — Buat file index.html
+html<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download Sertifikat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Download Sertifikat</h1>
+    <p>Masukkan nama lengkap sesuai data pendaftaran</p>
+
+    <div class="form-group">
+      <input type="text" id="inputNama" placeholder="Nama lengkap kamu..." />
+      <button onclick="cariSertifikat()">Cari</button>
+    </div>
+
+    <div id="loading" style="display:none">Mencari data...</div>
+    <div id="error" class="error" style="display:none"></div>
+
+    <!-- Preview sertifikat -->
+    <div id="preview" style="display:none">
+      <div class="sertifikat" id="sertifikat">
+        <h2>Sertifikat Kelulusan</h2>
+        <p>Diberikan kepada:</p>
+        <h1 id="cert-nama"></h1>
+        <p id="cert-acara"></p>
+        <p id="cert-tanggal"></p>
+      </div>
+      <button onclick="downloadPDF()">⬇ Download PDF</button>
+    </div>
+  </div>
+
+  <script>
+    async function cariSertifikat() {
+      const nama = document.getElementById('inputNama').value.trim();
+      const loading = document.getElementById('loading');
+      const error = document.getElementById('error');
+      const preview = document.getElementById('preview');
+
+      if (!nama) {
+        alert('Nama tidak boleh kosong!');
+        return;
+      }
+
+      // Reset tampilan
+      error.style.display = 'none';
+      preview.style.display = 'none';
+      loading.style.display = 'block';
+
+      try {
+        const res = await fetch(`/api/sertifikat?nama=${encodeURIComponent(nama)}`);
+        const data = await res.json();
+
+        loading.style.display = 'none';
+
+        if (!res.ok) {
+          error.textContent = data.error || 'Terjadi kesalahan';
+          error.style.display = 'block';
+          return;
+        }
+
+        // Tampilkan preview — sesuaikan nama kolom dengan header Sheet kamu
+        document.getElementById('cert-nama').textContent = data['Nama'] || nama;
+        document.getElementById('cert-acara').textContent = data['Acara'] || '';
+        document.getElementById('cert-tanggal').textContent = data['Tanggal'] || '';
+
+        preview.style.display = 'block';
+
+      } catch (err) {
+        loading.style.display = 'none';
+        error.textContent = 'Gagal menghubungi server';
+        error.style.display = 'block';
+      }
+    }
+
+    function downloadPDF() {
+      window.print(); // Cara sederhana, nanti bisa upgrade pakai html2pdf.js
+    }
+  </script>
+</body>
+</html>
+
+Tahap 8 — Buat file style.css
+css* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.container {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+h1 { color: #333; margin-bottom: 10px; }
+p { color: #666; margin-bottom: 20px; }
+
+.form-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px 20px;
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover { background: #3367d6; }
+
+.error { color: red; margin-top: 10px; }
+
+.sertifikat {
+  border: 3px solid #4285f4;
+  border-radius: 12px;
+  padding: 40px;
+  margin: 20px 0;
+  background: #fff;
+}
+
+.sertifikat h1 { color: #4285f4; font-size: 28px; margin: 10px 0; }
+
+Tahap 9 — Upload Project ke GitHub
+Buka terminal / command prompt di folder sertifikat-app kamu, lalu jalankan satu per satu:
+bash# 1. Inisialisasi git
+git init
+
+# 2. Tambah semua file
+git add .
+
+# 3. Commit pertama
+git commit -m "first commit"
+
+# 4. Buat repo baru di GitHub dulu, lalu hubungkan
+git remote add origin https://github.com/USERNAME/sertifikat-app.git
+
+# 5. Push ke GitHub
+git branch -M main
+git push -u origin main
+
+Catatan: Ganti USERNAME dengan username GitHub kamu (rizal-Hartono)
+
+Kalau belum buat repo di GitHub:
+
+Buka github.com/new
+Beri nama sertifikat-app
+Jangan centang apapun (kosong saja)
+Klik Create repository
+Copy URL repo-nya, pakai di perintah git remote add di atas
+
+
+Tahap 10 — Deploy ke Vercel
+
+Buka vercel.com → login
+Klik Add New → Project
+Pilih repo sertifikat-app dari GitHub → klik Import
+Biarkan semua setting default → klik Deploy
+Tunggu beberapa detik, Vercel akan otomatis build project kamu ✅
+
+
+Tahap 11 — Setting Environment Variable
+Ini penting! API Key dan Sheet ID tidak boleh ada di kode, harus disimpan di Vercel:
+
+Di dashboard Vercel, buka project kamu
+Klik Settings → Environment Variables
+Tambahkan dua variable:
+
+NameValueGOOGLE_API_KEYAPI key yang tadi kamu buat di Google CloudSHEET_IDID Google Sheet kamu
+
+Cara dapat Sheet ID: Buka Google Sheet kamu, lihat URL-nya:
+https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit
+Bagian yang ditebalkan itu adalah Sheet ID kamu
+
+
+Setelah ditambahkan, klik Redeploy supaya variable aktif
+
+Struktur Sheet untuk Uji Coba
+Buka Google Sheet kamu, buat tab bernama Data dengan struktur:
+ABCNamaAcaraTanggalBudi SantosoPelatihan Web Developer1 Januari 2026Siti RahayuPelatihan Web Developer1 Januari 2026Rizal HartonoPelatihan Web Developer1 Januari 2026
+
+Baris 1 = header, baris 2 dst = data peserta
+
+
+Pastikan Sheet bisa diakses publik
+Ini sering terlewat! Google Sheets API dengan API Key hanya bisa baca Sheet yang dishare publik:
+
+Buka Google Sheet → klik Share
+Klik Change to anyone with the link
+Pastikan aksesnya Viewer
+Klik Done
+
+
+Setelah itu coba buka web app kamu di Vercel, ketik salah satu nama yang ada di Sheet, lalu lihat hasilnya.
+
+File 1 — api/jadwal.js
+Buat file baru jadwal.js di dalam folder api:
+javascriptexport default async function handler(req, res) {
+  const SHEET_ID = process.env.SHEET_ID;
+  const API_KEY = process.env.GOOGLE_API_KEY;
+  const SHEET_NAME = 'Jadwal';
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    const rows = data.values;
+
+    if (!rows || rows.length < 2) {
+      return res.status(404).json({ error: 'Data jadwal tidak ditemukan' });
+    }
+
+    // Baris pertama = header
+    const headers = rows[0];
+
+    // Baris berikutnya = data, ubah jadi array of object
+    const jadwal = rows.slice(1).map(row => {
+      const obj = {};
+      headers.forEach((header, i) => {
+        obj[header] = row[i] || '-';
+      });
+      return obj;
+    });
+
+    return res.status(200).json(jadwal);
+
+  } catch (err) {
+    return res.status(500).json({ error: 'Gagal mengambil data jadwal' });
+  }
+}
+
+File 2 — jadwal.html
+Buat file baru jadwal.html di root folder project:
+html<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Jadwal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .header-dashboard {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .badge {
+      background: #e8f0fe;
+      color: #4285f4;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    thead tr {
+      background: #4285f4;
+      color: white;
+    }
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    tbody tr:hover {
+      background: #f5f9ff;
+    }
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
+    .error {
+      text-align: center;
+      padding: 40px;
+      color: red;
+    }
+    .nav-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: #4285f4;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .nav-link:hover {
+      text-decoration: underline;
+    }
+    .total {
+      text-align: right;
+      margin-top: 12px;
+      color: #888;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="nav-link">← Kembali ke Download Sertifikat</a>
+
+    <div class="header-dashboard">
+      <div>
+        <h1>Dashboard Jadwal</h1>
+        <p>Daftar kegiatan dan acara yang akan datang</p>
+      </div>
+      <span class="badge" id="badge-total">Memuat...</span>
+    </div>
+
+    <div id="loading" class="loading">Mengambil data jadwal...</div>
+    <div id="error" class="error" style="display:none"></div>
+
+    <div id="tabel-wrapper" style="display:none">
+      <table>
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <p class="total" id="total-text"></p>
+    </div>
+  </div>
+
+  <script>
+    async function loadJadwal() {
+      const loading = document.getElementById('loading');
+      const error = document.getElementById('error');
+      const tabelWrapper = document.getElementById('tabel-wrapper');
+      const thead = document.getElementById('thead');
+      const tbody = document.getElementById('tbody');
+      const badge = document.getElementById('badge-total');
+      const totalText = document.getElementById('total-text');
+
+      try {
+        const res = await fetch('/api/jadwal');
+        const data = await res.json();
+
+        loading.style.display = 'none';
+
+        if (!res.ok) {
+          error.textContent = data.error || 'Terjadi kesalahan';
+          error.style.display = 'block';
+          badge.textContent = 'Error';
+          return;
+        }
+
+        // Buat header tabel dari key object pertama
+        const headers = Object.keys(data[0]);
+        const headerRow = document.createElement('tr');
+        headers.forEach(h => {
+          const th = document.createElement('th');
+          th.textContent = h;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+
+        // Isi baris data
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          headers.forEach(h => {
+            const td = document.createElement('td');
+            td.textContent = item[h];
+            row.appendChild(td);
+          });
+          tbody.appendChild(row);
+        });
+
+        // Update badge dan total
+        badge.textContent = `${data.length} Kegiatan`;
+        totalText.textContent = `Total: ${data.length} kegiatan`;
+        tabelWrapper.style.display = 'block';
+
+      } catch (err) {
+        loading.style.display = 'none';
+        error.textContent = 'Gagal menghubungi server';
+        error.style.display = 'block';
+        badge.textContent = 'Error';
+      }
+    }
+
+    // Load otomatis saat halaman dibuka
+    loadJadwal();
+  </script>
+</body>
+</html>
+
+Langkah Terakhir — Push ke GitHub
+bashgit add .
+git commit -m "tambah dashboard jadwal"
+git push
+Vercel akan otomatis redeploy setelah push. Setelah selesai coba buka:
+
+https://situsmu.vercel.app/jadwal.html
+
+Salah satu error yang dirasakan kemarin jangan pernah menaruh api key di github
