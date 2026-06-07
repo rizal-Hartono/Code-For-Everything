@@ -1010,3 +1010,32 @@ Vercel akan otomatis redeploy setelah push. Setelah selesai coba buka:
 https://situsmu.vercel.app/jadwal.html
 
 Salah satu error yang dirasakan kemarin jangan pernah menaruh api key di github
+
+8. Cek ports
+
+sudo ss -tlnp
+State   Recv-Q  Send-Q                Local Address:Port     Peer Address:Port  Process
+LISTEN  0       4096                    100.76.5.55:64764         0.0.0.0:*      users:(("tailscaled",pid=1159,fd=26))
+LISTEN  0       511                         0.0.0.0:8090          0.0.0.0:*      users:(("nginx",pid=13218,fd=17),("nginx",pid=13217,fd=17),("nginx",pid=13216,fd=17),("nginx",pid=13215,fd=17),("nginx",pid=5609,fd=17))
+LISTEN  0       511                         0.0.0.0:443           0.0.0.0:*      users:(("nginx",pid=13218,fd=9),("nginx",pid=13217,fd=9),("nginx",pid=13216,fd=9),("nginx",pid=13215,fd=9),("nginx",pid=5609,fd=9))
+LISTEN  0       50                          0.0.0.0:445           0.0.0.0:*      users:(("smbd",pid=1511,fd=46))
+LISTEN  0       50                          0.0.0.0:139           0.0.0.0:*      users:(("smbd",pid=1511,fd=47))
+LISTEN  0       80                        127.0.0.1:3306          0.0.0.0:*      users:(("mariadbd",pid=1410,fd=78))
+LISTEN  0       4096                        0.0.0.0:111           0.0.0.0:*      users:(("rpcbind",pid=694,fd=4),("systemd",pid=1,fd=64))
+LISTEN  0       511                         0.0.0.0:80            0.0.0.0:*      users:(("nginx",pid=13218,fd=8),("nginx",pid=13217,fd=8),("nginx",pid=13216,fd=8),("nginx",pid=13215,fd=8),("nginx",pid=5609,fd=8))
+LISTEN  0       128                         0.0.0.0:22            0.0.0.0:*      users:(("sshd",pid=1355,fd=3))
+LISTEN  0       4096                  127.0.0.53%lo:53            0.0.0.0:*      users:(("systemd-resolve",pid=695,fd=14))
+LISTEN  0       100                       127.0.0.1:1883          0.0.0.0:*      users:(("mosquitto",pid=3933,fd=5))
+LISTEN  0       4096     [fd7a:115c:a1e0::5a33:537]:54161            [::]:*      users:(("tailscaled",pid=1159,fd=27))
+LISTEN  0       100                           [::1]:1883             [::]:*      users:(("mosquitto",pid=3933,fd=6))
+LISTEN  0       4096     [fd7a:115c:a1e0::5a33:537]:443              [::]:*      users:(("tailscaled",pid=1159,fd=22))
+LISTEN  0       4096                              *:8080                *:*      users:(("filebrowser",pid=1106,fd=7))
+LISTEN  0       50                             [::]:445              [::]:*      users:(("smbd",pid=1511,fd=44))
+LISTEN  0       50                             [::]:139              [::]:*      users:(("smbd",pid=1511,fd=45))
+LISTEN  0       4096                           [::]:111              [::]:*      users:(("rpcbind",pid=694,fd=6),("systemd",pid=1,fd=66))
+LISTEN  0       511                            [::]:80               [::]:*      users:(("nginx",pid=13218,fd=10),("nginx",pid=13217,fd=10),("nginx",pid=13216,fd=10),("nginx",pid=13215,fd=10),("nginx",pid=5609,fd=10))
+LISTEN  0       128                            [::]:22               [::]:*      users:(("sshd",pid=1355,fd=4))
+LISTEN  0       511                               *:3001                *:*      users:(("uptime-kuma",pid=3616,fd=22))
+LISTEN  0       4096                              *:3000                *:*      users:(("grafana",pid=13823,fd=31))
+LISTEN  0       4096                              *:9100                *:*      users:(("node_exporter",pid=11093,fd=3))
+LISTEN  0       4096                              *:9090                *:*      users:(("prometheus",pid=13481,fd=7))
